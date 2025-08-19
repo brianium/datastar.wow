@@ -1,5 +1,6 @@
 (ns datastar.wow-test
-  (:require [clojure.test :refer [deftest is testing use-fixtures]]
+  (:require [clojure.string :as string]
+            [clojure.test :refer [deftest is testing use-fixtures]]
             [datastar.wow :as d* :refer [with-datastar]]
             [dev.onionpancakes.chassis.core :as c]
             [hiccup2.core :as hiccup]
@@ -368,6 +369,14 @@
   [_ _ msg]
   (throw (Exception. msg)))
 
+(defn uc-signals
+  "Very important signals"
+  [signals]
+  [[::d*/patch-signals
+    (reduce-kv
+     (fn [m k v]
+       (assoc m k (string/upper-case v))) {} signals)]])
+
 (deftest extending-nexus
   (testing "userland connection storage via interceptors"
     (let [request (-> (mock/request :post "/")
@@ -391,6 +400,17 @@
           result (on-open (test-generator))
           effect (->> result :results (filterv #(= "Moo! Said the cow" (:res %))) first)]
       (is (= "Moo! Said the cow" (:res effect)))))
+  (testing "adding pure actions"
+    (let [request (-> (mock/request :post "/")
+                      (mock/header "datastar-request" "true")
+                      (mock/json-body {:name "turjan"}))
+          result  (handle request {::d*/fx  [[::uc-signals]]}
+                          {::d*/update-nexus (fn [n]
+                                               (assoc-in n [:nexus/actions ::uc-signals] uc-signals))})
+          {:d*.sse/keys [on-open]} (:opts result)
+          result (on-open (test-generator))
+          uc (-> result :results first :effect (nth 2) :name)]
+      (is (= uc "TURJAN"))))
   (testing "error capture"
     (let [request (-> (mock/request :post "/")
                       (mock/header "datastar-request" "true"))
