@@ -5,7 +5,8 @@
          no.cjohansen/nexus        {:mvn/version "2025.07.1"}}
  :aliases
  {:dev {:extra-paths ["dev/src"]
-        :extra-deps  {dev.data-star.clojure/http-kit {:mvn/version "1.0.0-RC1"}
+        :extra-deps  {dev.data-star.clojure/brotli   {:mvn/version "1.0.0-RC1"}
+                      dev.data-star.clojure/http-kit {:mvn/version "1.0.0-RC1"}
                       dev.data-star.clojure/ring     {:mvn/version "1.0.0-RC1"}
                       hiccup/hiccup                  {:mvn/version "2.0.0"}
                       integrant/integrant            {:mvn/version "0.13.1"}

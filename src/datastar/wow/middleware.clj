@@ -78,7 +78,7 @@
 
 (defn- sse-response
   [request response opts ->sse-response]
-  (let [{:datastar.wow/keys [with-open-sse? update-nexus write-json write-html]} opts
+  (let [{:datastar.wow/keys [with-open-sse? update-nexus write-json write-html write-profile]} opts
         actions (:datastar.wow/fx response)
         nex     (cond-> default-nexus
                   (every? some? [write-json write-html])
@@ -92,7 +92,8 @@
                   
                   :finally update-nexus)
         dispatch-data (-> {:datastar.wow/response response :datastar.wow/request request}
-                          (assoc :datastar.wow/with-open-sse? (response :datastar.wow/with-open-sse? with-open-sse?)))]
+                          (assoc :datastar.wow/with-open-sse? (response :datastar.wow/with-open-sse? with-open-sse?)))
+        wp            (response :datastar.wow/write-profile write-profile)]
     (if-some [connection (response :datastar.wow/connection)]
       (do (nexus/dispatch nex {:sse connection :request request} dispatch-data actions)
           {:status 204})
@@ -108,6 +109,7 @@
                       (d*/with-open-sse sse
                         (nexus/dispatch nex system dispatch-data actions))
                       (nexus/dispatch nex system dispatch-data actions))))}
+         (some? wp) (assoc :d*.sse/write-profile wp)
          (int? (:status response))  (assoc :status (:status response))
          (map? (:headers response)) (assoc :headers (:headers response)))))))
 
@@ -156,7 +158,7 @@
 
 (defn with-datastar
   "Give your ring app The Power ™ 🚀"
-  [->sse-response {:datastar.wow/keys [html-attrs read-json with-open-sse? update-nexus write-json write-html]
+  [->sse-response {:datastar.wow/keys [html-attrs read-json with-open-sse? update-nexus write-json write-html write-profile]
                    :or   {html-attrs     {}
                           read-json      default-read-json
                           update-nexus   identity
@@ -166,5 +168,6 @@
         dispatch (with-dispatch {:datastar.wow/with-open-sse? with-open-sse?
                                  :datastar.wow/write-html     write-html
                                  :datastar.wow/write-json     write-json
+                                 :datastar.wow/write-profile  write-profile
                                  :datastar.wow/update-nexus   update-nexus} ->sse-response)]
     (comp signals html dispatch)))
