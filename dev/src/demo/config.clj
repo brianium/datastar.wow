@@ -9,11 +9,12 @@
   (stop-fn))
 
 (def config
-  {::app/with-datastar {:type :jetty}
+  {::app/with-datastar {:type :httpkit}
    ::app/router        {:routes     app/routes
                         :middleware [(ig/ref ::app/with-datastar)]}
    ::app/handler       {:router     (ig/ref ::app/router)
-                        :middleware []}
+                        ;;; include starfederation.datastar.clojure.adapter.http-kit2/start-responding-middleware if using http-kit2 adapter
+                        :middleware []} 
    ::app/server        {:handler (ig/ref ::app/handler)
-                        :type :jetty}
+                        :type :httpkit}
    ::app/state         app/initial-state})

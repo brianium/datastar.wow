@@ -10,6 +10,7 @@
             [reitit.ring.coercion :as rrc]
             [reitit.ring.middleware.parameters :as rmp]
             [starfederation.datastar.clojure.adapter.http-kit :as hk]
+            [starfederation.datastar.clojure.adapter.http-kit2 :as hk2]
             [starfederation.datastar.clojure.adapter.ring :as dr]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -17,13 +18,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn with-datastar
-  "datastar.wow/with-datastar component so we can tweak config in the demo app"
+  "datastar.wow/with-datastar component so we can tweak config in the demo app. If using
+   :httpkit2 be sure to include the start-responding-middleware from the offical sdk"
   [{:keys [type]
     :or {type :httpkit}
     :as deps}]
   (d*/with-datastar (case type
-                      :httpkit hk/->sse-response
-                      :jetty   dr/->sse-response) (dissoc deps :type)))
+                      :httpkit  hk/->sse-response
+                      :httpkit2 hk2/->sse-response
+                      :jetty    dr/->sse-response) (dissoc deps :type)))
 
 (defn handler
   [{:keys [router middleware]}]
@@ -152,7 +155,8 @@
 
 (defn reset
   [{{{:keys [state]} :data} ::r/match}]
-  {:🚀 [[::d*/patch-elements [::user#demo (reset! state initial-state)]]
+  {::d*/with-open-sse? true
+   :🚀 [[::d*/patch-elements [::user#demo (reset! state initial-state)]]
         [::d*/patch-signals  initial-state]]})
 
 (def routes
