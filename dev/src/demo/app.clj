@@ -9,7 +9,8 @@
             [reitit.ring :as rr]
             [reitit.ring.coercion :as rrc]
             [reitit.ring.middleware.parameters :as rmp]
-            [starfederation.datastar.clojure.adapter.http-kit :as hk]))
+            [starfederation.datastar.clojure.adapter.http-kit :as hk]
+            [starfederation.datastar.clojure.adapter.ring :as dr]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Demo components for integrant
@@ -21,7 +22,8 @@
     :or {type :httpkit}
     :as deps}]
   (d*/with-datastar (case type
-                      :httpkit hk/->sse-response) (dissoc deps :type)))
+                      :httpkit hk/->sse-response
+                      :jetty   dr/->sse-response) (dissoc deps :type)))
 
 (defn handler
   [{:keys [router middleware]}]
@@ -45,7 +47,8 @@
     :or {type :httpkit}
     :as deps}]
   (case type
-    :httpkit (demo.server/httpkit-server (dissoc deps :type))))
+    :httpkit (demo.server/httpkit-server (dissoc deps :type))
+    :jetty   (demo.server/jetty-server (dissoc deps :type))))
 
 (defn state
   [initial-state]
@@ -139,7 +142,8 @@
 (defn cancel
   [{{{:keys [state]} :data} ::r/match}]
   {::d*/with-open-sse? true ;;; indicators won't work unless the connection closes
-   :🚀 [[::d*/patch-elements [::user#demo @state]]]})
+   :🚀 [[::d*/patch-elements [::user#demo @state]]
+        [::d*/patch-signals  @state]]})
 
 (defn edit
   [{{{:keys [state]} :data} ::r/match}]
@@ -148,7 +152,8 @@
 
 (defn reset
   [{{{:keys [state]} :data} ::r/match}]
-  {:🚀 [[::d*/patch-elements [::user#demo (reset! state initial-state)]]]})
+  {:🚀 [[::d*/patch-elements [::user#demo (reset! state initial-state)]]
+        [::d*/patch-signals  initial-state]]})
 
 (def routes
   ["" {:state (ig/ref ::state)}

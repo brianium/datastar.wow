@@ -9,10 +9,11 @@
   (stop-fn))
 
 (def config
-  {::app/with-datastar {:type :httpkit}
+  {::app/with-datastar {:type :jetty}
    ::app/router        {:routes     app/routes
                         :middleware [(ig/ref ::app/with-datastar)]}
    ::app/handler       {:router     (ig/ref ::app/router)
                         :middleware []}
-   ::app/server        {:handler (ig/ref ::app/handler)}
+   ::app/server        {:handler (ig/ref ::app/handler)
+                        :type :jetty}
    ::app/state         app/initial-state})
