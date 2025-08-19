@@ -1,5 +1,7 @@
 (ns datastar.wow.schema
-  (:require [starfederation.datastar.clojure.api :as d*]))
+  (:require [starfederation.datastar.clojure.adapter.common :as ac]
+            [starfederation.datastar.clojure.api :as d*])
+  (:import (java.io OutputStream Writer)))
 
 (def Hiccup
   [:schema
@@ -102,12 +104,38 @@
 (def WriteHtml
   [:=> [:cat Hiccup] :string])
 
+;;; Write profile schema lifted from starfederation.datastar.clojure.adapter.common-schemas
+
+(defn output-stream? [o]
+  (instance? OutputStream o))
+
+(def output-stream-schema
+  [:fn {:error/message "should be a java.io.OutputStream"}
+   output-stream?])
+
+(defn writer? [x]
+  (instance? Writer x))
+
+(def writer-schema
+  [:fn {:error/message "should be a java.io.Writer"}
+   writer?])
+
+(def wrap-output-stream-schema
+  [:-> output-stream-schema writer-schema])
+
+(def WriteProfile
+  [:map
+   [ac/wrap-output-stream wrap-output-stream-schema]
+   [ac/write! fn?]
+   [ac/content-encoding :string]])
+
 (def WithDatastarOpts
   [:map
    [:datastar.wow/html-attrs {:optional true :description "A convenience for providing injected attributes to hiccup forms used in :body"} map?]
    [:datastar.wow/write-html {:optional true :description "A function meant to serialize html for Web Browsers"} WriteHtml]
    [:datastar.wow/read-json {:optional true :description "A function meant to deserialize signals into Clojure types"} ReadJson]
    [:datastar.wow/write-json {:optional true :description "A function meant to serialize Clojure types into json strings"} WriteJson]
+   [:datastar.wow/write-profile {:optional true} WriteProfile]
    [:datastar.wow/update-nexus {:optional true :description "An update function that supports extending the nexus governing effects"} NexusUpdate]
    [:datastar.wow/with-open-sse? {:optional true :description "If true, wrap dispatch in starfederation.datastar.clojure.api/with-open-sse?"} :boolean]])
 
