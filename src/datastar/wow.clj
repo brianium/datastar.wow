@@ -1,9 +1,12 @@
 (ns datastar.wow
   (:require [datastar.wow.middleware :as mw]
+            [datastar.wow.schema :as schema]
             [starfederation.datastar.clojure.api :as d*]
             [starfederation.datastar.clojure.utils :refer [def-clone]]))
 
 (defn with-datastar
+  "The Power Is Yours"
+  {:malli/schema schema/=>with-datastar}
   ([->sse-response]
    (mw/with-datastar ->sse-response {}))
   ([->sse-response & opts]
@@ -29,7 +32,7 @@
 (def-clone pm-after d*/pm-after)
 (def-clone pm-replace d*/pm-replace)
 
-;;; View helpers
+;;; Action helpers
 
 (def-clone sse-get d*/sse-get)
 (def-clone sse-post d*/sse-post)

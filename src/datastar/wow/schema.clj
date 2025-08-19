@@ -110,3 +110,8 @@
    [:datastar.wow/write-json {:optional true :description "A function meant to serialize Clojure types into json strings"} WriteJson]
    [:datastar.wow/update-nexus {:optional true :description "An update function that supports extending the nexus governing effects"} NexusUpdate]
    [:datastar.wow/with-open-sse? {:optional true :description "If true, wrap dispatch in starfederation.datastar.clojure.api/with-open-sse?"} :boolean]])
+
+(def =>with-datastar
+  [:function
+   [:=> [:cat ifn?] ifn?]
+   [:=> [:cat ifn? WithDatastarOpts] ifn?]])
