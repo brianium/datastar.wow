@@ -38,7 +38,7 @@ A more declarative and data-oriented way to build [Datastar](https://data-star.d
          {:keys [text-content]} :signals} req
         agent    (agents/fetch-agent agent-store entry-id {:key :entry})
         updated  (agents/update-content! agent entry-id text-content)]
-    {:🚀 [[::d*/patch-elements [html/context-entry {:entry updated :tag (:tag cog)}]] ;;; ::d*/fx if you hate rockets
+    {:🚀 [[::d*/patch-elements [html/context-entry {:entry updated :tag (:tag agent)}]] ;;; ::d*/fx if you hate rockets
           [::d*/patch-signals  {:editing false}]
           [::d*/execute-script "hljs.highlightAll()"]]}))
 ```
