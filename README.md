@@ -1,4 +1,8 @@
-# datastar.wow
+<p align="center">
+  <br><br>
+  <img src="datastar.wow.png" />
+  <br><br>
+</p>
 
 A more declarative and data-oriented way to build [Datastar](https://data-star.dev/) applications with Clojure. Built upon the [official Datastar Clojure SDK](https://github.com/starfederation/datastar-clojure) and [Nexus](https://github.com/cjohansen/nexus). Bring your own JSON and Hiccup library or use the very sensible (recommended even!) defaults powered by [Charred](https://github.com/cnuernber/charred) and [Chassis](https://github.com/onionpancakes/chassis).
 
