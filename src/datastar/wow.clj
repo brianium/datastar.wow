@@ -63,6 +63,7 @@
 ;;; Official SDK constants rexported here for convenience
 
 (def-clone CDN-url d*/CDN-url)
+(def-clone CDN-map-url d*/CDN-map-url)
 (def-clone id d*/id)
 (def-clone retry-duration d*/retry-duration)
 (def-clone selector d*/selector)
