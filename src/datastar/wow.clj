@@ -13,15 +13,16 @@
    arguments or a map.
 
    Options:
-   | key              | description                                                                                                                |
-   | ---------------- | -------------------------------------------------------------------------------------------------------------------------- |
-   | ::with-open-sse? | If true, all SSE responses will be wrapped in d*/with-open-sse. Defaults to false. Can be configured per response          |
-   | ::write-profile  | Applies a :d*.sse/write-profile to all SSE responses. Defaults to the SDK default. Can be configured per response          |
-   | ::update-nexus   | A function that takes the default nexus config and returns a new one. See [nexus docs](https://github.com/cjohansen/nexus) |
-   | ::write-html     | The html serialization function used for :body and events. Defaults to dev.onionpancakes.chassis.core/html (recommended)   |
-   | ::read-json      | The json function used to deserialize datastar signals. Defaults to a custom parse-fn powered by charred.api/parse-json-fn |
-   | ::write-json     | The json function used to serialize Clojure structures to json strings. Defaults to charred.api/write-json-str             |
-   | ::html-attrs     | A map of html attributes that will be provided to any hiccup forms used in the :body key of any response                   |
+
+   | key                | description                                                                                                                |
+   | ------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+   | `::with-open-sse?` | If true, all SSE responses will be wrapped in `d*/with-open-sse`. Defaults to false. Can be configured per response        |
+   | `::write-profile`  | Applies a `:d*.sse/write-profile` to all SSE responses. Defaults to the SDK default. Can be configured per response        |
+   | `::update-nexus`   | A function that takes the default nexus config and returns a new one. See [nexus docs](https://github.com/cjohansen/nexus) |
+   | `::write-html`     | The html serialization function used for :body and events. Defaults to dev.onionpancakes.chassis.core/html (recommended)   |
+   | `::read-json`      | The json function used to deserialize datastar signals. Defaults to a custom parse-fn powered by charred.api/parse-json-fn |
+   | `::write-json`     | The json function used to serialize Clojure structures to json strings. Defaults to charred.api/write-json-str             |
+   | `::html-attrs`     | A map of html attributes that will be provided to any hiccup forms used in the :body key of any response                   |
 
   Example ring responses for handlers using with-datastar:
   ```clojure
@@ -40,18 +41,18 @@
   like connection storage and observability. Application specific effects, actions, and placeholders can be provided as well. The \"system\" given
   to nexus.core/dispatch will contain the following keys:
 
-  | key      | description                                       |
-  | -------- | ------------------------------------------------- |
-  | :sse     | The current SSEGen instance. nil for close events |
-  | :request | The ring request used to initiate the connection  |
+  | key        | description                                       |
+  | ---------- | ------------------------------------------------- |
+  | `:sse`     | The current SSEGen instance. nil for close events |
+  | `:request` | The ring request used to initiate the connection  |
 
   The following keys will exist on Nexus dispatch data by default:
 
-  | key              | description                                                         |
-  | ---------------- | ------------------------------------------------------------------- |
-  | ::response       | The response returned by the handler.                               |
-  | ::request        | The ring request used to initiate the connection                    |
-  | ::with-open-sse? | Whether or not the connection is set to close after events are sent |
+  | key                | description                                                         |
+  | ------------------ | ------------------------------------------------------------------- |
+  | `::response`       | The response returned by the handler.                               |
+  | `::request`        | The ring request used to initiate the connection                    |
+  | `::with-open-sse?` | Whether or not the connection is set to close after events are sent |
 
   Nexus actions (pure functions) will receive signals as their state value"
   {:malli/schema schema/=>with-datastar}
@@ -60,7 +61,7 @@
   ([->sse-response & opts]
    (mw/with-datastar ->sse-response opts)))
 
-;;; Official SDK constants rexported here for convenience
+;;; Official SDK constants re-exported here for convenience
 
 (def-clone CDN-url d*/CDN-url)
 (def-clone CDN-map-url d*/CDN-map-url)
