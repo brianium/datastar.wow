@@ -233,7 +233,7 @@ dispatch data, and so we use that fact to create a unique id from the session an
    - The connection is not set to auto close - i.e it was not opened using d*/with-open-sse
 
   Storage is cleared in response to an sse-closed event. *abort-chs is an atom for storing abort channels persistent across dispatches
-  Note: Machina Ars supports an optional ::abort-ch key on any response. If provided, it will be signaled during close"
+  Note: This app supports an optional ::abort-ch key on any response. If provided, it will be signaled during close"
   [store *abort-chs]
   {:id ::manage-connections
    :before-dispatch
@@ -258,7 +258,7 @@ dispatch data, and so we use that fact to create a unique id from the session an
          (doseq [abort-ch @*abort-chs]
            (swap! *abort-chs disj abort-ch)
            (async/put! abort-ch ::yeet))
-         (when-some [(get-in dispatch-data [::d*/response ::conn-id])]
+         (when-some [conn-id (get-in dispatch-data [::d*/response ::conn-id])]
            (conns/purge! store [session-id conn-id]))))
      ctx)})
 	 
