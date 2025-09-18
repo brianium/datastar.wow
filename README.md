@@ -138,6 +138,21 @@ Makes more sense when leveraging [asynchronous effects](https://github.com/cjoha
 
 Not used explicitly. This is dispatched when an SSE connection is closed. Useful when [extending](#extending) `with-datastar`.
 
+### `:datastar.wow/connection`
+
+``` clojure
+{:🚀 [[::d*/connection]]}
+```
+
+Not used explicitly. This is dispatched when determining if an existing connection should be used. If this effect has a `:datastar.wow/connection` key present in `dispatch-data`, then that
+value will be used as the SSE connection. Intended mainly for use by extensions providing functionality via interceptors.
+
+The connection used by dispatch will use the following priority order:
+
+1. A `:datastar.wow/connection` key on the response returned by a handler
+2. A `:datastar.wow/connection` key found in `dispatch-data` (via interceptor)
+3. A new connection will be created and used
+
 ## `with-datastar` Options
 
 The second argument to `with-datastar` is an options map that can be used to customize and configure.
