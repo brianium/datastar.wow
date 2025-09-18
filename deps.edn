@@ -1,13 +1,13 @@
 {:paths ["src"]
  :deps  {com.cnuernber/charred     {:mvn/version "1.037"}
-         dev.data-star.clojure/sdk {:mvn/version "1.0.0-RC1"}
+         dev.data-star.clojure/sdk {:mvn/version "1.0.0-RC3"}
          dev.onionpancakes/chassis {:mvn/version "1.0.365"}
          no.cjohansen/nexus        {:mvn/version "2025.07.1"}}
  :aliases
  {:dev {:extra-paths ["dev/src"]
-        :extra-deps  {dev.data-star.clojure/brotli   {:mvn/version "1.0.0-RC1"}
-                      dev.data-star.clojure/http-kit {:mvn/version "1.0.0-RC1"}
-                      dev.data-star.clojure/ring     {:mvn/version "1.0.0-RC1"}
+        :extra-deps  {dev.data-star.clojure/brotli   {:mvn/version "1.0.0-RC3"}
+                      dev.data-star.clojure/http-kit {:mvn/version "1.0.0-RC3"}
+                      dev.data-star.clojure/ring     {:mvn/version "1.0.0-RC3"}
                       hiccup/hiccup                  {:mvn/version "2.0.0"}
                       integrant/integrant            {:mvn/version "0.13.1"}
                       io.github.tonsky/clj-reload    {:mvn/version "0.9.7"}
@@ -25,7 +25,7 @@
           slipset/deps-deploy {:mvn/version "0.2.2"}}
          :ns-default slim.lib
          :exec-args {:lib         com.github.brianium/datastar.wow
-                     :version     "1.0.0-RC1-wow2"
+                     :version     "1.0.0-RC3-wow0"
                      :url         "https://github.com/brianium/datastar.wow"
                      :description "Decalarative and data-oriented Datastar apps for Clojure"
                      :developer   "Brian Scaturro"}}}}
