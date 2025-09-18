@@ -23,6 +23,7 @@
   [{:keys [type]
     :or {type :httpkit}
     :as deps}]
+  (println "creating with-datastar middleware:" (pr-str deps))
   (d*/with-datastar (case type
                       :httpkit  hk/->sse-response
                       :httpkit2 hk2/->sse-response
@@ -49,6 +50,7 @@
   [{:keys [type]
     :or {type :httpkit}
     :as deps}]
+  (println "creating server:" (pr-str deps))
   (case type
     :httpkit (demo.server/httpkit-server (dissoc deps :type))
     :jetty   (demo.server/jetty-server (dissoc deps :type))))
