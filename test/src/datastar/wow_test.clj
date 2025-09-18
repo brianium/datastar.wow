@@ -341,9 +341,9 @@
 
 (use-fixtures :each reset-refs)
 
-(def interceptor
+(def connection-storage-interceptor
   "An interceptor supporting userland connection storage"
-  {:id :test-interceptor
+  {:id :connection-storage
    ;;; store the given sse connection for later
    :before-dispatch
    (fn [{:keys [system dispatch-data] :as ctx}]
@@ -384,7 +384,7 @@
           result  (handle request {::conn-id :fun-test-conn
                                    ::d*/fx   [[::d*/patch-signals {:ok true}]]}
                           {::d*/update-nexus (fn [n]
-                                               (assoc n :nexus/interceptors [interceptor]))})
+                                               (assoc n :nexus/interceptors [connection-storage-interceptor]))})
           {:d*.sse/keys [on-open]} (:opts result)
           sse-gen (test-generator)
           _ (on-open sse-gen)]
@@ -418,9 +418,32 @@
                                              [::badtimes "Error!"]]}
                           {::d*/update-nexus (fn [n]
                                                (-> (assoc-in n [:nexus/effects ::badtimes] badtimes)
-                                                   (assoc :nexus/interceptors [interceptor])))})
+                                                   (assoc :nexus/interceptors [connection-storage-interceptor])))})
           {:d*.sse/keys [on-open]} (:opts result)
           _ (on-open (test-generator))
           errors @*errors]
       (is (= 1 (count errors)))
-      (is (= "Error!" (-> errors first :err .getMessage))))))
+      (is (= "Error!" (-> errors first :err .getMessage)))))
+  (testing "providing a connection via dispatch data"
+    (let [*used-gen (atom nil)
+          test-gen (test-generator)
+          request  (-> (mock/request :post "/")
+                       (mock/header "datastar-request" "true"))
+          result   (handle request {::d*/fx [[::d*/patch-signals {:ok true}]]}
+                           {::d*/update-nexus (fn [n]
+                                                (assoc n :nexus/interceptors [{:id ::connection-replacement
+                                                                               :before-effect
+                                                                               (fn [{:keys [effect system] :as ctx}]
+                                                                                 (let [id (first effect)]
+                                                                                   (cond
+                                                                                     (= id :datastar.wow/connection)
+                                                                                     (assoc-in ctx [:dispatch-data :datastar.wow/connection] test-gen)
+
+                                                                                     (= id :datastar.wow/send)
+                                                                                     (do
+                                                                                       (reset! *used-gen (:sse system))
+                                                                                       ctx)
+
+                                                                                     :else ctx)))}]))})] ;;; open with different sse-gen to show that the interceptor is used
+      (is (= @*used-gen test-gen))
+      (is (= 204 (get-in result [:response :status] 204))))))

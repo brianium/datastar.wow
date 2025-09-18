@@ -51,7 +51,10 @@
      (request :signals))
 
    :nexus/effects
-   {:datastar.wow/close-sse
+   {:datastar.wow/connection
+    (fn [{{:datastar.wow/keys [connection]} :dispatch-data} _]
+      connection)
+    :datastar.wow/close-sse
     (fn [_ {:keys [sse]}]
       (d*/close-sse! sse))
     :datastar.wow/sse-closed (constantly nil) ;;; dispatched in on-close callback
@@ -76,6 +79,21 @@
   "If we aren't having fun, then what is the point?"
   {:🚀 :datastar.wow/fx})
 
+(defn- get-connection
+  "The connection used by dispatch. Order of priority is:
+   - 1. A :datastar.wow/connection key on the response map returned by a handler
+   - 2. A :datastar.wow/connection key found in nexus dispatch-data
+   - 3. A new sse-gen created in sse-response"
+  [nexus request dispatch-data]
+  (if-some [connection (get-in dispatch-data [:datastar.wow/response :datastar.wow/connection])]
+    connection
+    (let [dispatch-result (nexus/dispatch nexus {:sse nil :request request} dispatch-data [[:datastar.wow/connection]])]
+      (some->
+       dispatch-result
+       (:results)
+       (first)
+       (:res)))))
+
 (defn- sse-response
   [request response opts ->sse-response]
   (let [{:datastar.wow/keys [with-open-sse? update-nexus write-json write-html write-profile]} opts
@@ -94,7 +112,7 @@
         dispatch-data (-> {:datastar.wow/response response :datastar.wow/request request}
                           (assoc :datastar.wow/with-open-sse? (response :datastar.wow/with-open-sse? with-open-sse?)))
         wp            (response :datastar.wow/write-profile write-profile)]
-    (if-some [connection (response :datastar.wow/connection)]
+    (if-some [connection (get-connection nex request dispatch-data)]
       (do (nexus/dispatch nex {:sse connection :request request} dispatch-data actions)
           {:status 204})
       (->sse-response
