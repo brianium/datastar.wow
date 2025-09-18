@@ -25,7 +25,7 @@
           slipset/deps-deploy {:mvn/version "0.2.2"}}
          :ns-default slim.lib
          :exec-args {:lib         com.github.brianium/datastar.wow
-                     :version     "1.0.0-RC1-wow1"
+                     :version     "1.0.0-RC1-wow2"
                      :url         "https://github.com/brianium/datastar.wow"
                      :description "Decalarative and data-oriented Datastar apps for Clojure"
                      :developer   "Brian Scaturro"}}}}
