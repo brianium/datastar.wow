@@ -364,6 +364,14 @@
   [_ _ post-moo-text]
   (str "Moo! " post-moo-text))
 
+(defn moo-placeholder
+  [{:keys [post-moo]}]
+  post-moo)
+
+(defn async-cowsay
+  [{:keys [dispatch]} & _]
+  (dispatch [[::cowsay [:placeholder/moo]]] {:post-moo "Moo!"}))
+
 (defn badtimes
   "Throw an error for bad times"
   [_ _ msg]
@@ -428,6 +436,19 @@
           result (on-open (test-generator))
           uc (-> result :results first :effect (nth 2) :name)]
       (is (= uc "TURJAN"))))
+  (testing "placeholders"
+    (let [request (-> (mock/request :post "/")
+                      (mock/header "datastar-request" "true"))
+          result  (handle request {::d*/fx [[::async-cowsay]]}
+                          {::d*/registries [{::d*/placeholders
+                                             {:placeholder/moo moo-placeholder}
+                                             ::d*/effects
+                                             {::cowsay cowsay
+                                              ::async-cowsay async-cowsay}}]})
+          {:d*.sse/keys [on-open]} (:opts result)
+          result (on-open (test-generator))
+          effect (->> result :results first :res :results first)]
+      (is (= "Moo! Moo!" (:res effect)))))
   (testing "error capture"
     (let [request (-> (mock/request :post "/")
                       (mock/header "datastar-request" "true"))
