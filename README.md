@@ -22,6 +22,7 @@ A more declarative and data-oriented way to build [Datastar](https://data-star.d
 - [Extending](#extending)
 - [Demo](#demo)
 - [Html Supremacy](#html-supremacy)
+- [CHANGELOG](CHANGELOG.md)
 
 ## Quick Example
 
