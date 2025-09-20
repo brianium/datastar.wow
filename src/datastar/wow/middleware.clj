@@ -43,14 +43,14 @@
    via charred and chassis respectively"
   (create-send json/write-json-str c/html))
 
-(def ^:private default-nexus
+(def ^:private default-registry
   "Default effect configuration. All datastar events are described
    as effects and system state is whatever signals can be read from the request"
-  {:nexus/system->state
+  {:datastar.wow/system->state
    (fn [{:keys [request]}]
-     (request :signals))
+     (:signals request))
 
-   :nexus/effects
+   :datastar.wow/effects
    {:datastar.wow/connection
     (fn [{{:datastar.wow/keys [connection]} :dispatch-data} _]
       connection)
@@ -61,7 +61,7 @@
     :datastar.wow/send ;;; Route through a single :datastar.wow/send action so we can audit all sends
     default-send}
 
-   :nexus/actions
+   :datastar.wow/actions
    {:datastar.wow/patch-elements
     (fn [_ elements & [?opts]]
       [[:datastar.wow/send :datastar.wow/patch-elements elements ?opts]])
@@ -75,61 +75,90 @@
     (fn [_ script-content & [?opts]]
       [[:datastar.wow/send :datastar.wow/execute-script script-content ?opts]])}})
 
-(def fun-enhancers
-  "If we aren't having fun, then what is the point?"
-  {:🚀 :datastar.wow/fx})
-
 (defn- get-connection
   "The connection used by dispatch. Order of priority is:
    - 1. A :datastar.wow/connection key on the response map returned by a handler
    - 2. A :datastar.wow/connection key found in nexus dispatch-data
    - 3. A new sse-gen created in sse-response"
-  [nexus request dispatch-data]
+  [dispatch request dispatch-data]
   (if-some [connection (get-in dispatch-data [:datastar.wow/response :datastar.wow/connection])]
     connection
-    (let [dispatch-result (nexus/dispatch nexus {:sse nil :request request} dispatch-data [[:datastar.wow/connection]])]
+    (let [dispatch-result (dispatch {:sse nil :request request} dispatch-data [[:datastar.wow/connection]])]
       (some->
        dispatch-result
        (:results)
        (first)
        (:res)))))
 
+(def ^:private nexus-aliases
+  {:datastar.wow/system->state :nexus/system->state
+   :datastar.wow/effects :nexus/effects
+   :datastar.wow/placeholders :nexus/placeholders
+   :datastar.wow/actions :nexus/actions
+   :datastar.wow/interceptors :nexus/interceptors})
+
+(defn- merge-registry
+  [acc m]
+  (reduce-kv
+   (fn [r k v]
+     (if-some [nk (nexus-aliases k)]
+       (update r nk (condp = nk
+                      :nexus/interceptors (fnil into [])
+                      :nexus/system->state (constantly v)
+                      merge) v)
+       r)) acc m))
+
+(defn- create-registry
+  "Create a nexus registry for all effects, actions, placeholders, and interceptors. Supports
+   overriding json and html serialization"
+  [registry-specs {:datastar.wow/keys [write-json write-html]}]
+  (let [nexus (reduce (fn [registry spec]
+                        (let [r (cond
+                                  (map? spec)    spec
+                                  (fn? spec)     (spec)
+                                  (vector? spec) (apply (first spec) (rest spec))
+                                  :else {})]
+                          (merge-registry registry r)))
+                      {} registry-specs)]
+    (cond-> nexus
+      (every? some? [write-json write-html])
+      (assoc-in [:nexus/effects :datastar.wow/send] (create-send write-json write-html))
+
+      (some? write-json)
+      (assoc-in [:nexus/effects :datastar.wow/send] (create-send write-json c/html))
+
+      (some? write-html)
+      (assoc-in [:nexus/effects :datastar.wow/send] (create-send json/write-json-str write-html)))))
+
 (defn- sse-response
   [request response opts ->sse-response]
-  (let [{:datastar.wow/keys [with-open-sse? update-nexus write-json write-html write-profile]} opts
+  (let [{:datastar.wow/keys [with-open-sse? dispatch write-profile]} opts
         actions (:datastar.wow/fx response)
-        nex     (cond-> default-nexus
-                  (every? some? [write-json write-html])
-                  (assoc-in [:nexus/effects :datastar.wow/send] (create-send write-json write-html))
-
-                  (some? write-json)
-                  (assoc-in [:nexus/effects :datastar.wow/send] (create-send write-json c/html))
-
-                  (some? write-html)
-                  (assoc-in [:nexus/effects :datastar.wow/send] (create-send json/write-json-str write-html))
-                  
-                  :finally update-nexus)
         dispatch-data (-> {:datastar.wow/response response :datastar.wow/request request}
                           (assoc :datastar.wow/with-open-sse? (response :datastar.wow/with-open-sse? with-open-sse?)))
         wp            (response :datastar.wow/write-profile write-profile)]
-    (if-some [connection (get-connection nex request dispatch-data)]
-      (do (nexus/dispatch nex {:sse connection :request request} dispatch-data actions)
+    (if-some [connection (get-connection dispatch request dispatch-data)]
+      (do (dispatch {:sse connection :request request} dispatch-data actions)
           {:status 204})
       (->sse-response
        request
        (cond-> {:d*.sse/on-close
                 (fn [& _]
-                  (nexus/dispatch nex {:sse nil :request request} dispatch-data [[:datastar.wow/sse-closed]]))
+                  (dispatch {:sse nil :request request} dispatch-data [[:datastar.wow/sse-closed]]))
                 :d*.sse/on-open
                 (fn [sse]
                   (let [system  {:sse sse :request request}]
                     (if (:datastar.wow/with-open-sse? dispatch-data)
                       (d*/with-open-sse sse
-                        (nexus/dispatch nex system dispatch-data actions))
-                      (nexus/dispatch nex system dispatch-data actions))))}
+                        (dispatch system dispatch-data actions))
+                      (dispatch system dispatch-data actions))))}
          (some? wp) (assoc :d*.sse/write-profile wp)
          (int? (:status response))  (assoc :status (:status response))
          (map? (:headers response)) (assoc :headers (:headers response)))))))
+
+(def fun-enhancers
+  "If we aren't having fun, then what is the point?"
+  {:🚀 :datastar.wow/fx})
 
 (defn- with-dispatch
   [opts ->sse-response]
@@ -176,16 +205,23 @@
 
 (defn with-datastar
   "Give your ring app The Power ™ 🚀"
-  [->sse-response {:datastar.wow/keys [html-attrs read-json with-open-sse? update-nexus write-json write-html write-profile]
-                   :or   {html-attrs     {}
-                          read-json      default-read-json
-                          update-nexus   identity
-                          with-open-sse? false}}]
+  [->sse-response {:datastar.wow/keys [html-attrs read-json with-open-sse? registries write-json write-html write-profile]
+                   :or {html-attrs     {}
+                        read-json      default-read-json
+                        registries     []
+                        with-open-sse? false}}]
   (let [html     (with-html (or write-html c/html) html-attrs)
         signals  (with-signals read-json)
-        dispatch (with-dispatch {:datastar.wow/with-open-sse? with-open-sse?
-                                 :datastar.wow/write-html     write-html
-                                 :datastar.wow/write-json     write-json
-                                 :datastar.wow/write-profile  write-profile
-                                 :datastar.wow/update-nexus   update-nexus} ->sse-response)]
-    (comp signals html dispatch)))
+        registry (create-registry
+                  (into [default-registry] registries)
+                  {:datastar.wow/write-html     write-html
+                   :datastar.wow/write-json     write-json})
+        dispatch  (fn [system dispatch-data fx]
+                    (nexus/dispatch registry system dispatch-data fx))]
+    (comp
+     signals
+     html
+     (with-dispatch
+       {:datastar.wow/with-open-sse? with-open-sse?
+        :datastar.wow/write-profile  write-profile
+        :datastar.wow/dispatch       dispatch} ->sse-response))))

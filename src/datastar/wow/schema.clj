@@ -91,10 +91,6 @@
     {:description "response level override for whether or not an sse connection closes automatically when finished" :optional true} :boolean]
    [:datastar.wow/connection {:description "An existing open sse connection. Useful for using a previously opened connection" :optional true} :some]])
 
-(def NexusUpdate
-  [:function {:registry {::nexus [:map-of :keyword :any]}}
-   [:=> [:cat ::nexus] ::nexus]])
-
 (def ReadJson
   [:=> [:cat :any] :any])
 
@@ -129,6 +125,26 @@
    [ac/write! fn?]
    [ac/content-encoding :string]])
 
+(def InterceptorPhase
+  [:enum [:before-dispatch :after-dispatch :before-effect :after-effect :before-action :after-action]])
+
+(def MapRegistry
+  [:map
+   [:datastar.wow/effects {:optional true} [:map-of :keyword fn?]]
+   [:datastar.wow/actions {:optional true} [:map-of :keyword fn?]]
+   [:datastar.wow/placeholders {:optional true} [:map-of :keyword fn?]]
+   [:datastar.wow/interceptors {:optional true} [:vector [:map-of InterceptorPhase fn?]]]])
+
+(def FunctionRegistry
+  [:=> :cat MapRegistry])
+
+(def VectorRegistry
+  [:cat [:function
+         [:=> [:cat :any [:* :any]] MapRegistry]] [:* :any]])
+
+(def EffectRegistry
+  [:or MapRegistry FunctionRegistry VectorRegistry])
+
 (def WithDatastarOpts
   [:map
    [:datastar.wow/html-attrs {:optional true :description "A convenience for providing injected attributes to hiccup forms used in :body"} map?]
@@ -136,7 +152,7 @@
    [:datastar.wow/read-json {:optional true :description "A function meant to deserialize signals into Clojure types"} ReadJson]
    [:datastar.wow/write-json {:optional true :description "A function meant to serialize Clojure types into json strings"} WriteJson]
    [:datastar.wow/write-profile {:optional true} WriteProfile]
-   [:datastar.wow/update-nexus {:optional true :description "An update function that supports extending the nexus governing effects"} NexusUpdate]
+   [:datastar.wow/registries {:optional true :description "A vector of effect registries"} [:vector EffectRegistry]]
    [:datastar.wow/with-open-sse? {:optional true :description "If true, wrap dispatch in starfederation.datastar.clojure.api/with-open-sse?"} :boolean]])
 
 (def =>with-datastar
