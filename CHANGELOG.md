@@ -4,7 +4,8 @@
 
 ### Breaking Changes
 
-Removed `:datastar.wow/update-nexus` and replaced it with `:datastar.wow/registries`. `:datastar.wow/update-nexus` will now be ignored.
+Removed `:datastar.wow/update-nexus` and replaced it with `:datastar.wow/registries`. `:datastar.wow/update-nexus` will now be ignored. Adds `dispatch`
+function for creating a dispatch function for "out of band" dispatches.
 
 ### Changed
 
@@ -45,3 +46,15 @@ The vector syntax is particularly useful for scenarios using a component system 
     {::d*/registries [effect-map effect-fn [sql-effect (ig/ref ::database-fn)]]}})
 ```
 
+### Added
+
+Adds a `dispatch` function that takes a subset of `with-datstar` options: `::d*/registries`, `::d*/write-json`, and `::d*/write-html`. This
+dispatch can be passed to `with-datastar`.
+
+```clojure
+(def my-dispatch (d*/dispatch {::d*/registries [my-app-effects]}))
+
+(d*/with-datastar ->sse-response {::d*/dispatch my-dispatch})
+```
+
+If a dispatch function is given, `::d*/registries`, `::d*/write-json`, and `::d*/write-html` options given to `with-datastar` will be ignored.

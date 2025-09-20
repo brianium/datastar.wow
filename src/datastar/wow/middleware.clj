@@ -203,21 +203,32 @@
                                    h))))
           res)))))
 
+(defn create-dispatch
+  [{:datastar.wow/keys [registries write-json write-html]
+    :or {registries    []}}]
+  (let [registry (create-registry
+                  (into [default-registry] registries)
+                  {:datastar.wow/write-html write-html
+                   :datastar.wow/write-json write-json})]
+    (fn dispatch
+      ([dispatch-data fx]
+       (dispatch {:sse nil :request nil} dispatch-data fx))
+      ([system dispatch-data fx]
+       (nexus/dispatch registry system dispatch-data fx)))))
+
 (defn with-datastar
   "Give your ring app The Power ™ 🚀"
-  [->sse-response {:datastar.wow/keys [html-attrs read-json with-open-sse? registries write-json write-html write-profile]
+  [->sse-response {:datastar.wow/keys [html-attrs read-json with-open-sse? registries write-json write-html write-profile dispatch]
                    :or {html-attrs     {}
                         read-json      default-read-json
                         registries     []
                         with-open-sse? false}}]
   (let [html     (with-html (or write-html c/html) html-attrs)
         signals  (with-signals read-json)
-        registry (create-registry
-                  (into [default-registry] registries)
-                  {:datastar.wow/write-html     write-html
-                   :datastar.wow/write-json     write-json})
-        dispatch  (fn [system dispatch-data fx]
-                    (nexus/dispatch registry system dispatch-data fx))]
+        dispatch (or dispatch (create-dispatch
+                               {:datastar.wow/registries registries
+                                :datastar.wow/write-html write-html
+                                :datastar.wow/write-json write-json}))]
     (comp
      signals
      html

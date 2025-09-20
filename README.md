@@ -20,6 +20,7 @@ A more declarative and data-oriented way to build [Datastar](https://data-star.d
 - [Options](#with-datastar-options)
 - [Responses](#responses)
 - [Extending](#extending)
+- [Dispatch](#dispatch)
 - [Demo](#demo)
 - [Html Supremacy](#html-supremacy)
 - [CHANGELOG](CHANGELOG.md)
@@ -163,6 +164,7 @@ The second argument to `with-datastar` is an options map that can be used to cus
 | `::d*/with-open-sse?` | If true, all SSE responses will be wrapped in `d*/with-open-sse`. Defaults to false. Can be configured per response                               |
 | `::d*/write-profile`  | Applies a `:d*.sse/write-profile` to all SSE responses. Defaults to the SDK default. Can be configured per response                               |
 | `::d*/registries  `   | A vector of effect registries. An effect registry is an effect map, a function returning an effect map, or a vector (see [extending](#extending)) |
+| `::d*/dispatch`       | An existing dispatch function. If present, `::d*/registries`, `d*::write-html`, and `::d*/write-json` will be ignored. See [dispatch](#dispatch)  |
 | `::d*/write-html`     | The html serialization function used for :body and events. Defaults to dev.onionpancakes.chassis.core/html (recommended)                          |
 | `::d*/read-json`      | The json function used to deserialize datastar signals. Defaults to a custom parse-fn powered by charred.api/parse-json-fn                        |
 | `::d*/write-json`     | The json function used to serialize Clojure structures to json strings. Defaults to charred.api/write-json-str                                    |
@@ -333,6 +335,52 @@ The following keys will exist on Nexus dispatch data by default:
 | `::d*/response`       | The response returned by the handler.                               |
 | `::d*/request`        | The ring request used to initiate the connection                    |
 | `::d*/with-open-sse?` | Whether or not the connection is set to close after events are sent |
+
+## Dispatch
+
+The `datastar.wow/dispatch` function can be used to create a dispatch function supporting all datastar.wow effects. It takes a subset of arguments that `with-datastar` takes:
+
+| key                   | description                                                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `::d*/registries  `   | A vector of effect registries. An effect registry is an effect map, a function returning an effect map, or a vector (see [extending](#extending)) |
+| `::d*/write-html`     | The html serialization function used for :body and events. Defaults to dev.onionpancakes.chassis.core/html (recommended)                          |
+| `::d*/write-json`     | The json function used to serialize Clojure structures to json strings. Defaults to charred.api/write-json-str                                    |
+
+This is useful for creating a dispatch function that can be used "out of band" (i.e dispatch not bound to a particular sse connection or ring request). The returned function
+will have the following signature.
+
+```clojure
+(fn dispatch
+  ([dispatch-data fx])
+  ([system dispatch-data fx]))
+```
+
+If dispatching effects reliant on an sse connection, make sure the `system` map has an `:sse` connection and a ring `:request`.
+
+``` clojure
+(dispatch {:sse some-conn :request ring-request} dispatch-data [[::effect arg1 arg2]])
+```
+
+`with-datastar` generally provides the following dispatch data:
+
+``` clojure
+{::d*/response       ring-response
+ ::d*/request        ring-request
+ ::d*/with-open-sse? bool}
+```
+
+Be aware that userland interceptors and effects may rely on those values being present.
+
+### Use an existing dispatch function in with-datastar
+
+A dispatch function created by `datastar.wow/dispatch` can be given to `with-datastar`. If present, `:datastar.wow/registries`, `:datastar.wow/write-html` and `:datastar.wow/write-json` options
+will be ignored.
+
+``` clojure
+(def dispatch (d*/dispatch {::d*/registries [myappregistry]}))
+
+(def with-datastar (d*/with-datastar ->sse-response {::d*/dispatch dispatch}))
+```
 
 ## Demo
 

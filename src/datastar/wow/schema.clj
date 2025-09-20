@@ -145,6 +145,15 @@
 (def EffectRegistry
   [:or MapRegistry FunctionRegistry VectorRegistry])
 
+(def =>dispatch
+  [:function {:registry {::system [:map
+                                   [:sse :any]
+                                   [:request :any]]
+                         ::dispatch-data map?
+                         ::result :any}}
+   [:=> [:cat ::system ::dispatch-data [:vector DatastarAction]] [:sequential ::result]]
+   [:=> [:cat ::dispatch-data [:vector DatastarAction]] [:sequential ::result]]])
+
 (def WithDatastarOpts
   [:map
    [:datastar.wow/html-attrs {:optional true :description "A convenience for providing injected attributes to hiccup forms used in :body"} map?]
@@ -153,6 +162,7 @@
    [:datastar.wow/write-json {:optional true :description "A function meant to serialize Clojure types into json strings"} WriteJson]
    [:datastar.wow/write-profile {:optional true} WriteProfile]
    [:datastar.wow/registries {:optional true :description "A vector of effect registries"} [:vector EffectRegistry]]
+   [:datastar.wow/dispatch {:optional true :description "An existing dispatch function"} =>dispatch]
    [:datastar.wow/with-open-sse? {:optional true :description "If true, wrap dispatch in starfederation.datastar.clojure.api/with-open-sse?"} :boolean]])
 
 (def =>with-datastar

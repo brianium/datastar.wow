@@ -19,6 +19,7 @@
    | `::with-open-sse?` | If true, all SSE responses will be wrapped in `d*/with-open-sse`. Defaults to false. Can be configured per response             |
    | `::write-profile`  | Applies a `:d*.sse/write-profile` to all SSE responses. Defaults to the SDK default. Can be configured per response             |
    | `::registries`     | A vector of effect registries. An effect registry is an effect map, a function returning an effect map, or a vector (see below) |
+   | `::dispatch`       | An existing dispatch function. If present, `::registries`, `::write-html`, and `::write-json` will be ignored. See [[dispatch]] |
    | `::write-html`     | The html serialization function used for :body and events. Defaults to dev.onionpancakes.chassis.core/html (recommended)        |
    | `::read-json`      | The json function used to deserialize datastar signals. Defaults to a custom parse-fn powered by charred.api/parse-json-fn      |
    | `::write-json`     | The json function used to serialize Clojure structures to json strings. Defaults to charred.api/write-json-str                  |
@@ -85,6 +86,21 @@
    (mw/with-datastar ->sse-response {}))
   ([->sse-response & opts]
    (mw/with-datastar ->sse-response opts)))
+
+(defn dispatch
+  "Create a dispatch function. Useful for \"out of band\" dispatch or creating the middleware dispatch ahead of time.
+   The returned dispatch function has the following signature:
+
+  ```clojure
+  (fn dispatch
+    ([dispatch-data fx])
+    ([system dispatch-data fx]))
+  ```
+
+  Please note that dispatching datastar.wow's bundled effects/actions requires system to be a map containing an `:sse` key and a `:request` key
+  with an instance of SSEGen and a ring request respectively."
+  [opts]
+  (mw/create-dispatch opts))
 
 ;;; Official SDK constants re-exported here for convenience
 

@@ -403,7 +403,16 @@
 
            :else ctx)))}]})
 
-(deftest extending-nexus
+(deftest creating-dispatch
+  (let [dispatch (d*/dispatch {::d*/registries
+                               [{::d*/effects
+                                 {::cowsay cowsay}}]})
+        result  (dispatch {} [[::d*/patch-signals {:ok true}]
+                              [::cowsay "Said the cow"]])
+        effect (->> result :results (filterv #(= "Moo! Said the cow" (:res %))) first)]
+    (is (= "Moo! Said the cow" (:res effect)))))
+
+(deftest extending-dispatch
   (testing "userland connection storage via interceptors"
     (let [request (-> (mock/request :post "/")
                       (mock/header "datastar-request" "true"))
@@ -472,4 +481,16 @@
                            {::d*/registries [[connection-replacement {:on-send #(reset! *used-gen %)
                                                                       :connection test-gen}]]})] ;;; open with different sse-gen to show that the interceptor is used
       (is (= @*used-gen test-gen))
-      (is (= 204 (get-in result [:response :status] 204))))))
+      (is (= 204 (get-in result [:response :status] 204)))))
+  (testing "existing dispatch"
+    (let [dispatch (d*/dispatch {::d*/registries [{::d*/effects
+                                                   {::cowsay cowsay}}]})
+          request (-> (mock/request :post "/")
+                      (mock/header "datastar-request" "true"))
+          result  (handle request {::d*/fx  [[::d*/patch-signals {:ok true}]
+                                             [::cowsay "Said the cow"]]}
+                          {::d*/dispatch dispatch})
+          {:d*.sse/keys [on-open]} (:opts result)
+          result (on-open (test-generator))
+          effect (->> result :results (filterv #(= "Moo! Said the cow" (:res %))) first)]
+      (is (= "Moo! Said the cow" (:res effect))))))
