@@ -364,6 +364,14 @@
   [_ _ post-moo-text]
   (str "Moo! " post-moo-text))
 
+(defn moo-placeholder
+  [{:keys [post-moo]}]
+  post-moo)
+
+(defn async-cowsay
+  [{:keys [dispatch]} & _]
+  (dispatch [[::cowsay [:placeholder/moo]]] {:post-moo "Moo!"}))
+
 (defn badtimes
   "Throw an error for bad times"
   [_ _ msg]
@@ -377,14 +385,40 @@
      (fn [m k v]
        (assoc m k (string/upper-case v))) {} signals)]])
 
-(deftest extending-nexus
+(defn connection-replacement
+  [{:keys [on-send connection]}]
+  {::d*/interceptors
+   [{:id ::connection-replacement
+     :before-effect
+     (fn [{:keys [effect system] :as ctx}]
+       (let [id (first effect)]
+         (cond
+           (= id :datastar.wow/connection)
+           (assoc-in ctx [:dispatch-data :datastar.wow/connection] connection)
+
+           (= id :datastar.wow/send)
+           (do
+             (on-send (:sse system))
+             ctx)
+
+           :else ctx)))}]})
+
+(deftest creating-dispatch
+  (let [dispatch (d*/dispatch {::d*/registries
+                               [{::d*/effects
+                                 {::cowsay cowsay}}]})
+        result  (dispatch {} [[::d*/patch-signals {:ok true}]
+                              [::cowsay "Said the cow"]])
+        effect (->> result :results (filterv #(= "Moo! Said the cow" (:res %))) first)]
+    (is (= "Moo! Said the cow" (:res effect)))))
+
+(deftest extending-dispatch
   (testing "userland connection storage via interceptors"
     (let [request (-> (mock/request :post "/")
                       (mock/header "datastar-request" "true"))
           result  (handle request {::conn-id :fun-test-conn
                                    ::d*/fx   [[::d*/patch-signals {:ok true}]]}
-                          {::d*/update-nexus (fn [n]
-                                               (assoc n :nexus/interceptors [connection-storage-interceptor]))})
+                          {::d*/registries [{::d*/interceptors [connection-storage-interceptor]}]})
           {:d*.sse/keys [on-open]} (:opts result)
           sse-gen (test-generator)
           _ (on-open sse-gen)]
@@ -394,8 +428,8 @@
                       (mock/header "datastar-request" "true"))
           result  (handle request {::d*/fx  [[::d*/patch-signals {:ok true}]
                                              [::cowsay "Said the cow"]]}
-                          {::d*/update-nexus (fn [n]
-                                               (assoc-in n [:nexus/effects ::cowsay] cowsay))})
+                          {::d*/registries [{::d*/effects
+                                             {::cowsay cowsay}}]})
           {:d*.sse/keys [on-open]} (:opts result)
           result (on-open (test-generator))
           effect (->> result :results (filterv #(= "Moo! Said the cow" (:res %))) first)]
@@ -405,20 +439,34 @@
                       (mock/header "datastar-request" "true")
                       (mock/json-body {:name "turjan"}))
           result  (handle request {::d*/fx  [[::uc-signals]]}
-                          {::d*/update-nexus (fn [n]
-                                               (assoc-in n [:nexus/actions ::uc-signals] uc-signals))})
+                          {::d*/registries [{::d*/actions
+                                             {::uc-signals uc-signals}}]})
           {:d*.sse/keys [on-open]} (:opts result)
           result (on-open (test-generator))
           uc (-> result :results first :effect (nth 2) :name)]
       (is (= uc "TURJAN"))))
+  (testing "placeholders"
+    (let [request (-> (mock/request :post "/")
+                      (mock/header "datastar-request" "true"))
+          result  (handle request {::d*/fx [[::async-cowsay]]}
+                          {::d*/registries [{::d*/placeholders
+                                             {:placeholder/moo moo-placeholder}
+                                             ::d*/effects
+                                             {::cowsay cowsay
+                                              ::async-cowsay async-cowsay}}]})
+          {:d*.sse/keys [on-open]} (:opts result)
+          result (on-open (test-generator))
+          effect (->> result :results first :res :results first)]
+      (is (= "Moo! Moo!" (:res effect)))))
   (testing "error capture"
     (let [request (-> (mock/request :post "/")
                       (mock/header "datastar-request" "true"))
           result  (handle request {::d*/fx  [[::d*/patch-signals {:ok true}]
                                              [::badtimes "Error!"]]}
-                          {::d*/update-nexus (fn [n]
-                                               (-> (assoc-in n [:nexus/effects ::badtimes] badtimes)
-                                                   (assoc :nexus/interceptors [connection-storage-interceptor])))})
+                          {::d*/registries [(fn []
+                                              {::d*/effects
+                                               {::badtimes badtimes}
+                                               ::d*/interceptors [connection-storage-interceptor]})]})
           {:d*.sse/keys [on-open]} (:opts result)
           _ (on-open (test-generator))
           errors @*errors]
@@ -430,20 +478,19 @@
           request  (-> (mock/request :post "/")
                        (mock/header "datastar-request" "true"))
           result   (handle request {::d*/fx [[::d*/patch-signals {:ok true}]]}
-                           {::d*/update-nexus (fn [n]
-                                                (assoc n :nexus/interceptors [{:id ::connection-replacement
-                                                                               :before-effect
-                                                                               (fn [{:keys [effect system] :as ctx}]
-                                                                                 (let [id (first effect)]
-                                                                                   (cond
-                                                                                     (= id :datastar.wow/connection)
-                                                                                     (assoc-in ctx [:dispatch-data :datastar.wow/connection] test-gen)
-
-                                                                                     (= id :datastar.wow/send)
-                                                                                     (do
-                                                                                       (reset! *used-gen (:sse system))
-                                                                                       ctx)
-
-                                                                                     :else ctx)))}]))})] ;;; open with different sse-gen to show that the interceptor is used
+                           {::d*/registries [[connection-replacement {:on-send #(reset! *used-gen %)
+                                                                      :connection test-gen}]]})] ;;; open with different sse-gen to show that the interceptor is used
       (is (= @*used-gen test-gen))
-      (is (= 204 (get-in result [:response :status] 204))))))
+      (is (= 204 (get-in result [:response :status] 204)))))
+  (testing "existing dispatch"
+    (let [dispatch (d*/dispatch {::d*/registries [{::d*/effects
+                                                   {::cowsay cowsay}}]})
+          request (-> (mock/request :post "/")
+                      (mock/header "datastar-request" "true"))
+          result  (handle request {::d*/fx  [[::d*/patch-signals {:ok true}]
+                                             [::cowsay "Said the cow"]]}
+                          {::d*/dispatch dispatch})
+          {:d*.sse/keys [on-open]} (:opts result)
+          result (on-open (test-generator))
+          effect (->> result :results (filterv #(= "Moo! Said the cow" (:res %))) first)]
+      (is (= "Moo! Said the cow" (:res effect))))))

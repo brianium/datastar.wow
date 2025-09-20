@@ -14,15 +14,16 @@
 
    Options:
 
-   | key                | description                                                                                                                |
-   | ------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-   | `::with-open-sse?` | If true, all SSE responses will be wrapped in `d*/with-open-sse`. Defaults to false. Can be configured per response        |
-   | `::write-profile`  | Applies a `:d*.sse/write-profile` to all SSE responses. Defaults to the SDK default. Can be configured per response        |
-   | `::update-nexus`   | A function that takes the default nexus config and returns a new one. See [nexus docs](https://github.com/cjohansen/nexus) |
-   | `::write-html`     | The html serialization function used for :body and events. Defaults to dev.onionpancakes.chassis.core/html (recommended)   |
-   | `::read-json`      | The json function used to deserialize datastar signals. Defaults to a custom parse-fn powered by charred.api/parse-json-fn |
-   | `::write-json`     | The json function used to serialize Clojure structures to json strings. Defaults to charred.api/write-json-str             |
-   | `::html-attrs`     | A map of html attributes that will be provided to any hiccup forms used in the :body key of any response                   |
+   | key                | description                                                                                                                     |
+   | ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+   | `::with-open-sse?` | If true, all SSE responses will be wrapped in `d*/with-open-sse`. Defaults to false. Can be configured per response             |
+   | `::write-profile`  | Applies a `:d*.sse/write-profile` to all SSE responses. Defaults to the SDK default. Can be configured per response             |
+   | `::registries`     | A vector of effect registries. An effect registry is an effect map, a function returning an effect map, or a vector (see below) |
+   | `::dispatch`       | An existing dispatch function. If present, `::registries`, `::write-html`, and `::write-json` will be ignored. See [[dispatch]] |
+   | `::write-html`     | The html serialization function used for :body and events. Defaults to dev.onionpancakes.chassis.core/html (recommended)        |
+   | `::read-json`      | The json function used to deserialize datastar signals. Defaults to a custom parse-fn powered by charred.api/parse-json-fn      |
+   | `::write-json`     | The json function used to serialize Clojure structures to json strings. Defaults to charred.api/write-json-str                  |
+   | `::html-attrs`     | A map of html attributes that will be provided to any hiccup forms used in the :body key of any response                        |
 
   Example ring responses for handlers using with-datastar:
   ```clojure
@@ -37,9 +38,34 @@
   {:🚀 [[::d*/patch-elements [:h1#demo \"Hello\"] {::d*/patch-mode ::d*/pm-replace}]]} ; enhance fun with the rocket emoji alias
   ```
 
-  The `::update-nexus` option supports extension via [interceptors](https://github.com/cjohansen/nexus?tab=readme-ov-file#interceptors) for things
-  like connection storage and observability. Application specific effects, actions, and placeholders can be provided as well. The \"system\" given
-  to nexus.core/dispatch will contain the following keys:
+  The `::registries` option is used to extend a datastar.wow app. Application specific effects, actions, placeholders, and interceptors can be added.
+  See the [nexus](https://github.com/cjohansen/nexus) documentation for more information. A registry is an effect map, a zero arity function that returns an effect map
+  or a vector containing a function and any args it will be invoked with. This function should return an effect map.
+
+  ```clojure
+  (def effect-map
+    {::d*/effects
+      {::myeffect
+        (fn [ctx system arg1]
+          (println arg1))}})
+
+  (defn effect-map-fn []
+    {::d*/effects
+      {::myeffect
+        (fn [ctx system arg1]
+          (println arg1))}})
+
+  (defn effect-map-fn-1
+    [arg1]
+    {::d*/effects
+      {::othereffect
+        (fn [ctx system]
+          (println arg1))}})
+
+  (d*/with-datastar ->sse-response {::d*/registries [effect-map effect-map-fn [effect-map-fn-1 \"Mama mia!\"]]})
+  ```
+
+  The \"system\" given to nexus.core/dispatch will contain the following keys:
 
   | key        | description                                       |
   | ---------- | ------------------------------------------------- |
@@ -60,6 +86,21 @@
    (mw/with-datastar ->sse-response {}))
   ([->sse-response & opts]
    (mw/with-datastar ->sse-response opts)))
+
+(defn dispatch
+  "Create a dispatch function. Useful for \"out of band\" dispatch or creating the middleware dispatch ahead of time.
+   The returned dispatch function has the following signature:
+
+  ```clojure
+  (fn dispatch
+    ([dispatch-data fx])
+    ([system dispatch-data fx]))
+  ```
+
+  Please note that dispatching datastar.wow's bundled effects/actions requires system to be a map containing an `:sse` key and a `:request` key
+  with an instance of SSEGen and a ring request respectively."
+  [opts]
+  (mw/create-dispatch opts))
 
 ;;; Official SDK constants re-exported here for convenience
 

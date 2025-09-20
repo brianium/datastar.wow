@@ -20,8 +20,10 @@ A more declarative and data-oriented way to build [Datastar](https://data-star.d
 - [Options](#with-datastar-options)
 - [Responses](#responses)
 - [Extending](#extending)
+- [Dispatch](#dispatch)
 - [Demo](#demo)
 - [Html Supremacy](#html-supremacy)
+- [CHANGELOG](CHANGELOG.md)
 
 ## Quick Example
 
@@ -157,15 +159,16 @@ The connection used by dispatch will use the following priority order:
 
 The second argument to `with-datastar` is an options map that can be used to customize and configure.
 
-| key                   | description                                                                                                                |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `::d*/with-open-sse?` | If true, all SSE responses will be wrapped in `d*/with-open-sse`. Defaults to false. Can be configured per response        |
-| `::d*/write-profile`  | Applies a `:d*.sse/write-profile` to all SSE responses. Defaults to the SDK default. Can be configured per response        |
-| `::d*/update-nexus`   | A function that takes the default nexus config and returns a new one. See [nexus docs](https://github.com/cjohansen/nexus) |
-| `::d*/write-html`     | The html serialization function used for :body and events. Defaults to dev.onionpancakes.chassis.core/html (recommended)   |
-| `::d*/read-json`      | The json function used to deserialize datastar signals. Defaults to a custom parse-fn powered by charred.api/parse-json-fn |
-| `::d*/write-json`     | The json function used to serialize Clojure structures to json strings. Defaults to charred.api/write-json-str             |
-| `::d*/html-attrs`     | A map of html attributes that will be provided to any hiccup forms used in the :body key of any response                   |
+| key                   | description                                                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `::d*/with-open-sse?` | If true, all SSE responses will be wrapped in `d*/with-open-sse`. Defaults to false. Can be configured per response                               |
+| `::d*/write-profile`  | Applies a `:d*.sse/write-profile` to all SSE responses. Defaults to the SDK default. Can be configured per response                               |
+| `::d*/registries  `   | A vector of effect registries. An effect registry is an effect map, a function returning an effect map, or a vector (see [extending](#extending)) |
+| `::d*/dispatch`       | An existing dispatch function. If present, `::d*/registries`, `d*::write-html`, and `::d*/write-json` will be ignored. See [dispatch](#dispatch)  |
+| `::d*/write-html`     | The html serialization function used for :body and events. Defaults to dev.onionpancakes.chassis.core/html (recommended)                          |
+| `::d*/read-json`      | The json function used to deserialize datastar signals. Defaults to a custom parse-fn powered by charred.api/parse-json-fn                        |
+| `::d*/write-json`     | The json function used to serialize Clojure structures to json strings. Defaults to charred.api/write-json-str                                    |
+| `::d*/html-attrs`     | A map of html attributes that will be provided to any hiccup forms used in the :body key of any response                                          |
 
 Not that `::d*/with-open-sse?` and `::d*/write-profile` keys can be provided on a per response basis.
 
@@ -184,7 +187,42 @@ The response map returned by a ring handler supports a few extra keys to tailor 
 
 ## Extending
 
-The extension point for `datastar.wow` is via the `::d*/update-nexus` option. It opens a world of possibilities for things like logging, observability, error capture, connection storage, domain specific effects/actions, placeholders, etc. The [Nexus docs](https://github.com/cjohansen/nexus) are very good, and should give a good tour of what is possible.
+The extension point for `datastar.wow` is via the `::d*/registries` option. It opens a world of possibilities for things like logging, observability, error capture, connection storage, domain specific effects/actions, placeholders, etc. The [Nexus docs](https://github.com/cjohansen/nexus) are very good, and should give a good tour of what is possible.
+
+A registry is an effect map, a zero arity function that returns an effect map or a vector containing a function and any args it will be invoked with. This function should return an effect map.
+
+```clojure
+(def effect-map
+  {::d*/effects
+    {::myeffect
+      (fn [ctx system arg1]
+        (println arg1))}})
+
+(defn effect-map-fn []
+  {::d*/effects
+    {::myeffect
+      (fn [ctx system arg1]
+        (println arg1))}})
+
+(defn effect-map-fn-1
+  [arg1]
+  {::d*/effects
+    {::othereffect
+      (fn [ctx system]
+        (println arg1))}})
+
+(d*/with-datastar ->sse-response {::d*/registries [effect-map effect-map-fn [effect-map-fn-1 \"Mama mia!\"]]})
+```
+
+The vector syntax is particularly useful for scenarios using a component system like [integrant](https://github.com/weavejester/integrant).
+
+``` clojure
+(require '[integrant.core :as ig])
+
+(def config
+  {::datastar-config
+    {::d*/registries [effect-map effect-fn [sql-effect (ig/ref ::database-fn)]]}})
+```
 
 ### Example: Pure actions with access to signals as state
 
@@ -199,10 +237,11 @@ State in a Datastar application is signals. Any action added to the `datastar.wo
      (fn [m k v]
        (assoc m k (string/upper-case v))) {} signals)]])
 	   
-(defn update-nexus
-  "We can provide this as the ::d*/update-nexus option to with-datastar"
-  [nexus]
-  (assoc-in nexus [:nexus/actions ::uc-signals] uc-signals))
+(def registry
+  {::d*/actions
+    {::uc-signals uc-signals}})
+	
+(d*/with-datastar ->sse-response {::d*/registries [registry]})
 ``` 
 
 ### Example: Using placeholders for asynchronous effects
@@ -228,11 +267,12 @@ Sometimes we don't have data available to us when we first describe our set of e
                            :on-complete [::fx/merge-metadata agent {:jobs {job-key nil}}]
                            :on-start    [::fx/merge-metadata agent {:jobs {job-key job}}]
                            :on-partial  [::fx/save-image agent entry-id [::fx.placeholders/partial-image]]}]]} ;;; Datastar! Wow!
-						   
-(defn update-nexus
-  "We can provide this as the ::d*/update-nexus option to with-datastar"
-  [nexus]
-  (update nexus :nexus/placeholders merge {::fx.placeholders/partial-image partial-image}))
+
+(def registry
+  {::d*/placeholders
+    {::partial-image partial-image}})
+	
+(d*/with-datastar ->sse-response {::d*/registries [registry]})
 ```
 
 ### Example: Persisting connections via interceptor
@@ -250,37 +290,35 @@ dispatch data, and so we use that fact to create a unique id from the session an
   Storage is cleared in response to an sse-closed event. *abort-chs is an atom for storing abort channels persistent across dispatches
   Note: This app supports an optional ::abort-ch key on any response. If provided, it will be signaled during close"
   [store *abort-chs]
-  {:id ::manage-connections
-   :before-dispatch
-   (fn [{:keys [system dispatch-data] :as ctx}]
-     (let [{:keys [request sse]} system
-           store? (not (::d*/with-open-sse? dispatch-data))
-           session-id (get-in request [:session :session-id])
-           conn-id    (get-in dispatch-data [::d*/response ::conn-id])] ;;; the ring handler response is available as dispatch data
-       (when (and store? session-id conn-id (some? sse)) ;;; sse will be nil on close effects
-         (conns/store! store [session-id conn-id] sse)))
-     ctx)
-   :before-effect ;;; aggregate abort channels
-   (fn [{:keys [dispatch-data] :as ctx}]
-     (let [{{::keys [abort-ch]} ::d*/response} dispatch-data]
-       (when (some? abort-ch)
-         (swap! *abort-chs conj abort-ch))
-       ctx))
-   :after-effect
-   (fn [{:keys [effect system dispatch-data] :as ctx}]
-     (let [{{{:keys [session-id]} :session} :request} system]
-       (when (and effect (= ::d*/sse-closed (first effect)))
-         (doseq [abort-ch @*abort-chs]
-           (swap! *abort-chs disj abort-ch)
-           (async/put! abort-ch ::yeet))
-         (when-some [conn-id (get-in dispatch-data [::d*/response ::conn-id])]
-           (conns/purge! store [session-id conn-id]))))
-     ctx)})
-	 
-(defn update-nexus
-  "We can provide this as the ::d*/update-nexus option to with-datastar"
-  [nexus]
-  (assoc nexus :nexus/interceptors (manage-connections (conn-store) (atom #{}))))
+  {::d*/interceptors
+   [{:id ::manage-connections
+     :before-dispatch
+     (fn [{:keys [system dispatch-data] :as ctx}]
+       (let [{:keys [request sse]} system
+             store? (not (::d*/with-open-sse? dispatch-data))
+             session-id (get-in request [:session :session-id])
+             conn-id    (get-in dispatch-data [::d*/response ::conn-id])] ;;; the ring handler response is available as dispatch data
+         (when (and store? session-id conn-id (some? sse)) ;;; sse will be nil on close effects
+           (conns/store! store [session-id conn-id] sse)))
+       ctx)
+     :before-effect ;;; aggregate abort channels
+     (fn [{:keys [dispatch-data] :as ctx}]
+       (let [{{::keys [abort-ch]} ::d*/response} dispatch-data]
+         (when (some? abort-ch)
+           (swap! *abort-chs conj abort-ch))
+         ctx))
+     :after-effect
+     (fn [{:keys [effect system dispatch-data] :as ctx}]
+       (let [{{{:keys [session-id]} :session} :request} system]
+         (when (and effect (= ::d*/sse-closed (first effect)))
+           (doseq [abort-ch @*abort-chs]
+             (swap! *abort-chs disj abort-ch)
+             (async/put! abort-ch ::yeet))
+           (when-some [conn-id (get-in dispatch-data [::d*/response ::conn-id])]
+             (conns/purge! store [session-id conn-id]))))
+       ctx)}]})
+	   
+(d*/with-datastar ->sse-response {::d*/registries [[manage-connections (ig/ref ::store) (ig/ref ::abort-chs)]]})
 ```
 
 The Nexus "system" will have the following keys:
@@ -297,6 +335,52 @@ The following keys will exist on Nexus dispatch data by default:
 | `::d*/response`       | The response returned by the handler.                               |
 | `::d*/request`        | The ring request used to initiate the connection                    |
 | `::d*/with-open-sse?` | Whether or not the connection is set to close after events are sent |
+
+## Dispatch
+
+The `datastar.wow/dispatch` function can be used to create a dispatch function supporting all datastar.wow effects. It takes a subset of arguments that `with-datastar` takes:
+
+| key                   | description                                                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `::d*/registries  `   | A vector of effect registries. An effect registry is an effect map, a function returning an effect map, or a vector (see [extending](#extending)) |
+| `::d*/write-html`     | The html serialization function used for :body and events. Defaults to dev.onionpancakes.chassis.core/html (recommended)                          |
+| `::d*/write-json`     | The json function used to serialize Clojure structures to json strings. Defaults to charred.api/write-json-str                                    |
+
+This is useful for creating a dispatch function that can be used "out of band" (i.e dispatch not bound to a particular sse connection or ring request). The returned function
+will have the following signature.
+
+```clojure
+(fn dispatch
+  ([dispatch-data fx])
+  ([system dispatch-data fx]))
+```
+
+If dispatching effects reliant on an sse connection, make sure the `system` map has an `:sse` connection and a ring `:request`.
+
+``` clojure
+(dispatch {:sse some-conn :request ring-request} dispatch-data [[::effect arg1 arg2]])
+```
+
+`with-datastar` generally provides the following dispatch data:
+
+``` clojure
+{::d*/response       ring-response
+ ::d*/request        ring-request
+ ::d*/with-open-sse? bool}
+```
+
+Be aware that userland interceptors and effects may rely on those values being present.
+
+### Use an existing dispatch function in with-datastar
+
+A dispatch function created by `datastar.wow/dispatch` can be given to `with-datastar`. If present, `:datastar.wow/registries`, `:datastar.wow/write-html` and `:datastar.wow/write-json` options
+will be ignored.
+
+``` clojure
+(def dispatch (d*/dispatch {::d*/registries [myappregistry]}))
+
+(def with-datastar (d*/with-datastar ->sse-response {::d*/dispatch dispatch}))
+```
 
 ## Demo
 
