@@ -1,5 +1,13 @@
 # Change Log
 
+## [1.0.0-RC4-wow0] - 2025-11-04
+
+### Changed
+
+- Update Datastar Clojure SDK to version 1.0.0-RC4
+- Update Nexus to 2025.10.2
+- Update demo app to use new datastar attribute syntax - i.e `data-on:click` instead of `data-on-click`
+
 ## [1.0.0-RC3-wow1] - 2025-09-20
 
 ### Breaking Changes
