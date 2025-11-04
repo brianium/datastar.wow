@@ -77,14 +77,14 @@
     [:p (str "Email: " email)]
     [:div {:class ["my-2 flex gap-x-2"] :role "group"}
      [:button {:class ["bg-green-500 p-2 cursor-pointer"]
-               :data-indicator-_fetching true
-               :data-attr-disabled "$_fetching"
-               :data-on-click (d*/sse-get "/edit")}
+               :data-indicator:_fetching true
+               :data-attr:disabled "$_fetching"
+               :data-on:click (d*/sse-get "/edit")}
       "Edit"]
      [:button {:class ["bg-orange-500 p-2 cursor-pointer"]
-               :data-indicator-_fetching true
-               :data-attr-disabled "$_fetching"
-               :data-on-click (d*/sse-patch "/reset")}
+               :data-indicator:_fetching true
+               :data-attr:disabled "$_fetching"
+               :data-on:click (d*/sse-patch "/reset")}
       "Reset"]]]))
 
 (defmethod c/resolve-alias ::user-form
@@ -94,29 +94,29 @@
     [:div {:class ["flex flex-col w-40 gap-y-2"]}
      [:label.flex.flex-col "First Name"
       [:input.bg-black {:type "text"
-                        :data-bind-first-name__case.kebab true
-                        :data-attr-disabled "$_fetching"
+                        :data-bind:first-name__case.kebab true
+                        :data-attr:disabled "$_fetching"
                         :value first-name}]]
      [:label.flex.flex-col "Last Name"
       [:input.bg-black {:type "text"
-                        :data-bind-last-name__case.kebab true
-                        :data-attr-disabled "$_fetching"
+                        :data-bind:last-name__case.kebab true
+                        :data-attr:disabled "$_fetching"
                         :value last-name}]]
      [:label.flex.flex-col "Email"
       [:input.bg-black {:type "email"
-                        :data-bind-email__case.kebab true
-                        :data-attr-disabled "$_fetching"
+                        :data-bind:email__case.kebab true
+                        :data-attr:disabled "$_fetching"
                         :value email}]]]
     [:div {:class ["my-2 flex gap-x-2"] :role "group"}
      [:button {:class ["bg-green-500 p-2 cursor-pointer"]
-               :data-indicator-_fetching true
-               :data-attr-disabled "$_fetching"
-               :data-on-click (d*/sse-put "/")}
+               :data-indicator:_fetching true
+               :data-attr:disabled "$_fetching"
+               :data-on:click (d*/sse-put "/")}
       "Save"]
      [:button {:class ["bg-red-500 p-2 cursor-pointer"]
-               :data-indicator-_fetching true
-               :data-attr-disabled "$_fetching"
-               :data-on-click (d*/sse-get "/cancel")}
+               :data-indicator:_fetching true
+               :data-attr:disabled "$_fetching"
+               :data-on:click (d*/sse-get "/cancel")}
       "Cancel"]]]))
 
 (defn page

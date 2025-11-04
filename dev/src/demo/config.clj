@@ -16,13 +16,17 @@
    Useful for testing with different adapters"
   :httpkit)
 
+(def brotli? true)
+
 (def write-profile
   "Set this to nil if you want to test without a write profile"
   (brotli/->brotli-profile))
 
 (def config
   {::app/with-datastar (cond-> {:type adapter}
-                         (some? write-profile) (assoc ::d*/write-profile write-profile))
+                         (and (some? write-profile)
+                              (= adapter :httpkit)
+                              (true? brotli?)) (assoc ::d*/write-profile write-profile))
    ::app/router        {:routes     app/routes
                         :middleware [(ig/ref ::app/with-datastar)]}
    ::app/handler       {:router     (ig/ref ::app/router)
