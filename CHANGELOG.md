@@ -1,5 +1,12 @@
 # Change Log
 
+## [1.0.0-RC11-wow0] - 2026-07-07
+
+### Changed
+
+- Update Datastar Clojure SDK (and the brotli, http-kit, and ring adapters) to version 1.0.0-RC11
+- Update Nexus to 2026.06.4
+
 ## [1.0.0-RC4-wow0] - 2025-11-04
 
 ### Changed
