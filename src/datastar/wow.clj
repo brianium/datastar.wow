@@ -36,7 +36,12 @@
   {::d*/fx [[::d*/patch-elements [:h1#demo \"Hello\"]]]
    ::d*/with-open-sse? true} ; close sse connection after sending events
   {:🚀 [[::d*/patch-elements [:h1#demo \"Hello\"] {::d*/patch-mode ::d*/pm-replace}]]} ; enhance fun with the rocket emoji alias
+  {::d*/fx [[::d*/patch-elements [:circle#demo] {::d*/element-ns ::d*/ns-svg}]]} ; patch elements into an svg/mathml namespace
   ```
+
+  Patch options such as `::d*/element-ns` (with values `::d*/ns-html`, `::d*/ns-svg`, or `::d*/ns-mathml`) and
+  `::d*/view-transition-selector` mirror the [official SDK](https://github.com/starfederation/datastar-clojure) and are
+  supported as the trailing options map on the `::d*/patch-elements` and `::d*/patch-elements-seq` effects.
 
   The `::registries` option is used to extend a datastar.wow app. Application specific effects, actions, placeholders, and interceptors can be added.
   See the [nexus](https://github.com/cjohansen/nexus) documentation for more information. A registry is an effect map, a zero arity function that returns an effect map
@@ -111,6 +116,8 @@
 (def-clone selector d*/selector)
 (def-clone patch-mode d*/patch-mode)
 (def-clone use-view-transition d*/use-view-transition)
+(def-clone view-transition-selector d*/view-transition-selector)
+(def-clone element-ns d*/element-ns)
 (def-clone only-if-missing d*/only-if-missing)
 (def-clone auto-remove d*/auto-remove)
 (def-clone attributes d*/attributes)
@@ -122,6 +129,12 @@
 (def-clone pm-before d*/pm-before)
 (def-clone pm-after d*/pm-after)
 (def-clone pm-replace d*/pm-replace)
+
+;;; Element namespaces (values for the element-ns option)
+
+(def-clone ns-html d*/ns-html)
+(def-clone ns-svg d*/ns-svg)
+(def-clone ns-mathml d*/ns-mathml)
 
 ;;; Action helpers
 

@@ -104,6 +104,12 @@ Patches one or more elements in the DOM. By default, Datastar morphs elements by
       [::d*/patch-elements [:h2#other "Hello"] {d*/patch-mode d*/pm-replace}]]} ;;; Datastar options supported
 ```
 
+All patch options from the official SDK are supported in the trailing options map, including `d*/element-ns` (for patching into a non-HTML namespace) and `d*/view-transition-selector`:
+
+``` clojure
+{:🚀 [[::d*/patch-elements [:circle#demo] {d*/element-ns d*/ns-svg}]]} ;;; ns-html (default), ns-svg, ns-mathml
+```
+
 ### `:datastar.wow/patch-elements-seq`
 
 Identical to `:datastar.wow/patch-elements` except it takes a sequence of elements to patch.

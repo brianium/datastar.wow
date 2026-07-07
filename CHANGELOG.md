@@ -2,6 +2,13 @@
 
 ## [1.0.0-RC11-wow0] - 2026-07-07
 
+### Added
+
+- Element namespace support for parity with the official SDK ([#5](https://github.com/brianium/datastar.wow/issues/5)):
+  - Re-export the `element-ns` option constant and its `ns-html` / `ns-svg` / `ns-mathml` values
+  - Also re-export the RC11 `view-transition-selector` option constant
+  - Both `element-ns` and `view-transition-selector` are now accepted as options on the `::d*/patch-elements` and `::d*/patch-elements-seq` effects
+
 ### Changed
 
 - Update Datastar Clojure SDK (and the brotli, http-kit, and ring adapters) to version 1.0.0-RC11

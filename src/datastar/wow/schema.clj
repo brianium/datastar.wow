@@ -40,7 +40,13 @@
      d*/pm-after
      d*/pm-remove
      d*/pm-replace]]
-   [d*/use-view-transition {:optional true} :boolean]])
+   [d*/use-view-transition {:optional true} :boolean]
+   [d*/view-transition-selector {:optional true} :string]
+   [d*/element-ns {:optional true}
+    [:enum
+     d*/ns-html
+     d*/ns-svg
+     d*/ns-mathml]]])
 
 (def PatchSignalsOptions
   [:map {:closed true}

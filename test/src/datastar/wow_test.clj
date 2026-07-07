@@ -101,6 +101,15 @@
           {[{:keys [res]}] :results} (on-open (test-generator))]
       (is (= ["datastar-patch-elements"
               ["mode append" "elements <h1 id=\"test\">hello</h1>"]
+              #:d*.sse{:id false :retry-duration false}] res))))
+  (testing "with an element namespace"
+    (let [request  (-> (mock/request :post "/")
+                       (mock/header "datastar-request" "true"))
+          result    (handle request {::d*/fx [[::d*/patch-elements [:circle#c] {d*/element-ns d*/ns-svg}]]})
+          {:d*.sse/keys [on-open]} (:opts result)
+          {[{:keys [res]}] :results} (on-open (test-generator))]
+      (is (= ["datastar-patch-elements"
+              ["namespace svg" "elements <circle id=\"c\"></circle>"]
               #:d*.sse{:id false :retry-duration false}] res)))))
 
 (deftest patch-elements-seq-effect
@@ -124,6 +133,17 @@
               ["mode append"
                "elements <h1 id=\"a\">hello</h1>"
                "elements <h2 id=\"b\">goodbye</h2>"]
+              #:d*.sse{:id false :retry-duration false}] res))))
+  (testing "with an element namespace"
+    (let [request  (-> (mock/request :post "/")
+                       (mock/header "datastar-request" "true"))
+          result    (handle request {::d*/fx [[::d*/patch-elements-seq [[:circle#a] [:rect#b]] {d*/element-ns d*/ns-svg}]]})
+          {:d*.sse/keys [on-open]} (:opts result)
+          {[{:keys [res]}] :results} (on-open (test-generator))]
+      (is (= ["datastar-patch-elements"
+              ["namespace svg"
+               "elements <circle id=\"a\"></circle>"
+               "elements <rect id=\"b\"></rect>"]
               #:d*.sse{:id false :retry-duration false}] res)))))
 
 (deftest patch-signals-effect
@@ -288,7 +308,7 @@
   (testing "alternative write-html function"
     (let [request (mock/request :get "/")
           {:keys [response]} (handle request {:body [:h1 {:class "cool"} "hello"]} {::d*/html-attrs {:data-cool "very"}
-                                                                                     ::d*/write-html #(str (hiccup/html %))})]
+                                                                                    ::d*/write-html #(str (hiccup/html %))})]
       (is (= response {:status  200
                        :body    "<h1 class=\"cool\" data-cool=\"very\">hello</h1>"
                        :headers {"Content-Type" "text/html; charset=utf-8"}}))))
